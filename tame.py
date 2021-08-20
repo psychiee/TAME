@@ -28,7 +28,7 @@ SNR = float(par['SNR'])
 STRONGs = np.array(par['RVLINE'].split(','), float)
 
 lineinfo = np.genfromtxt(LINEFILE, usecols=(0,1,2,3))
-WAVs, ELEs = lineinfo[:,0], lineinfo[:,1]
+WAVs, ELEs, EPs, LGFs = lineinfo[:,0], lineinfo[:,1], lineinfo[:,2], lineinfo[:,3]
 dat = np.genfromtxt(SPECFILE)
 slam, sap, sint = dat[:,0], dat[:,1], dat[:,2]
 apset = np.array(sorted(set(sap)))
@@ -81,8 +81,9 @@ xo = xo * (1-(RV/2.9979e5))
 print( RVs)
 # LOOP for lines ========================================    
 srv = []
-for lel, lwv in zip(ELEs, WAVs):
+for iline, lwv in enumerate(WAVs):
     # elements name 
+    lel, lep, lloggf = ELEs[iline], EPs[iline], LGFs[iline]
     if lel == 26.0: ename = 'Fe1'
     elif lel == 26.1: ename = 'Fe2'
     else: ename = 'UNKNOWN'
@@ -140,8 +141,9 @@ for lel, lwv in zip(ELEs, WAVs):
         mm = np.argmin(abs(x_0s-lwv))
         lrv = (x_0s[mm]-lwv)/lwv*2.9979e5
         print('%.2f %8.3f %8.3f %8.3f %8.3f\n' % (x_0s[mm], ews[mm], lrv, fwhm_gs[mm], fwhm_ls[mm]))
-        few.write('%.2f %8.3f %8.3f %8.3f %8.3f\n' % (x_0s[mm], ews[mm], lrv, fwhm_gs[mm], fwhm_ls[mm]))
-    
+        few.write('%10.3f %9.1f %9.3f %10.4f %29.2f %10.3f %10.3f %10.3f %10.3f\n' % \
+                  (lwv, lel, lep, lloggf, ews[mm], means[mm], lrv, fwhm_gs[mm], fwhm_ls[mm]))
+
     else:
         p, yfit = fit_mGaussian(xrf, yrf, cx0, cy0, FWHMG=FWHMG)
         amplitudes, means, stddevs, fwhms, ews = [], [], [], [], []
@@ -160,7 +162,8 @@ for lel, lwv in zip(ELEs, WAVs):
         mm = np.argmin(abs(means-lwv))
         lrv = (means[mm]-lwv)/lwv*2.9979e5
         print('%.2f %8.3f %8.3f %8.3f\n' % (means[mm], ews[mm], lrv, fwhms[mm]))
-        few.write('%.2f %8.3f %8.3f %8.3f\n' % (means[mm], ews[mm], lrv, fwhms[mm]))
+        few.write('%10.3f %9.1f %9.3f %10.4f %29.2f %10.3f %10.3f %10.3f\n' % \
+                  (lwv, lel, lep, lloggf, ews[mm], means[mm], lrv, fwhms[mm]))
     
     # PLOT the line 
     fig, (ax1, ax2) = plt.subplots(nrows=2, num=2, figsize=(6,8))
