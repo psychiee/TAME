@@ -10,7 +10,7 @@ import os
 import numpy as np 
 import matplotlib.pyplot as plt 
 from glob import glob
-from speclib import find_absorption2, find_absorption1, find_absorption0, \
+from speclib import find_elname, find_absorption2, find_absorption1, find_absorption0, \
         local_continuum, fit_mGaussian, fit_mVoigt, read_params, \
         calc_EW_Gaussian, calc_EW_Voigt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -65,8 +65,7 @@ for swv in STRONGs:
     ax.plot(cv, cy, 'bo', alpha=0.4)
     rv1 = cv[mm]
     ax.plot([0,0],[0,1], 'r-', lw=1)
-    ax.plot([rv1,rv1],[0,1], 'b--', lw=3, alpha=0.4, \
-            label='RV=%.3f km/s' % (rv1,))
+    ax.plot([rv1,rv1],[0,1], 'b--', lw=3, alpha=0.4, label='RV=%.3f km/s' % (rv1,))
     ax.set_xlim(min(vr), max(vr))
     ax.set_ylim(0, 1.2)
     ax.grid()
@@ -84,15 +83,13 @@ srv = []
 for iline, lwv in enumerate(WAVs):
     # elements name 
     lel, lep, lloggf = ELEs[iline], EPs[iline], LGFs[iline]
-    if lel == 26.0: ename = 'Fe1'
-    elif lel == 26.1: ename = 'Fe2'
-    else: ename = 'UNKNOWN'
-    print( '%s %.2f' % (ename, lwv))
+    elname = find_elname(lel)
+    print( '%s %.2f' % (elname, lwv))
     # CROP the region around line to be estimated ---------
     mm = np.argmin(abs(aplam-lwv))
     ap = apset[mm]
     rr = np.where((sap == ap) & (xo > lwv-DWV) & (xo < lwv+DWV))[0]
-    #### SKIP NO SPECTRUM
+    #### SKIP for the case of NO SPECTRUM
     if len(rr) == 0: continue
 
     xr, yr = xo[rr], yo[rr]
@@ -100,7 +97,7 @@ for iline, lwv in enumerate(WAVs):
     ymin1, ymax1 = ymin1-(ymax1-ymin1)/10, ymax1+(ymax1-ymin1)/10
     
     # CORRECT local continuum -------------------------
-    ycont = local_continuum(xr, yr, lower=(1-1.0/SNR), N_MAX=N_MAX)
+    ycont = local_continuum(xr, yr, lower=(1-1.0/SNR), niter=N_MAX)
     yrc = yr/ycont
     
     # # CROP the region with lines ----------------------
@@ -116,17 +113,15 @@ for iline, lwv in enumerate(WAVs):
     ymin2, ymax2 = ymin2-(ymax2-ymin2)/10, ymax2+(ymax2-ymin2)/10
     
     # FIND lines --------------------------------------
-    try: 
-        cx0, cy0 = find_absorption2(xrf, yrf, thres=(-1.0/SNR))
-        NLINES = len(cx0)
-    except:
-        NLINES = 0 
-    #### SKIP NO LINES
+    cx0, cy0 = find_absorption2(xrf, yrf, thres=(-1.0/SNR))
+    NLINES = len(cx0)
+
+    #### SKIP for the case of NO LINE
     if NLINES == 0: continue
     
     # FIT absorptions ---------------------------------
     if FWHML > 0:
-        p, yfit = fit_mVoigt(xrf, yrf, cx0, cy0, FWHMG=FWHMG, FWHML=FWHML)
+        p, yfit = fit_mVoigt(xrf, yrf, cx0, cy0, fwhm_G=FWHMG, fwhm_L=FWHML)
         amplitude_ls, x_0s, fwhm_ls, fwhm_gs, ews = [], [], [], [], []
         for ifit in range(NLINES):
             x_0s.append(p.parameters[ifit*4+1])
@@ -138,14 +133,14 @@ for iline, lwv in enumerate(WAVs):
             ews.append(EW)
             print('%.2f %8.2f %8.2f %8.2f' % (x_0s[-1], EW, fwhm_ls[-1], fwhm_gs[-1]))
         means = np.array(x_0s)
-        mm = np.argmin(abs(x_0s-lwv))
+        mm = np.argmin(abs(x_0s - lwv))
         lrv = (x_0s[mm]-lwv)/lwv*2.9979e5
         print('%.2f %8.3f %8.3f %8.3f %8.3f\n' % (x_0s[mm], ews[mm], lrv, fwhm_gs[mm], fwhm_ls[mm]))
-        few.write('%10.3f %9.1f %9.3f %10.4f %29.2f %10.3f %10.3f %10.3f %10.3f\n' % \
+        few.write('%10.3f %9.1f %9.3f %10.4f %29.2f %10.3f %10.3f %10.3f %10.3f\n' %
                   (lwv, lel, lep, lloggf, ews[mm], means[mm], lrv, fwhm_gs[mm], fwhm_ls[mm]))
 
     else:
-        p, yfit = fit_mGaussian(xrf, yrf, cx0, cy0, FWHMG=FWHMG)
+        p, yfit = fit_mGaussian(xrf, yrf, cx0, cy0, fwhm=FWHMG)
         amplitudes, means, stddevs, fwhms, ews = [], [], [], [], []
         for ifit in range(NLINES):
             amplitudes.append(abs(p.parameters[ifit*3+1]))
@@ -162,7 +157,7 @@ for iline, lwv in enumerate(WAVs):
         mm = np.argmin(abs(means-lwv))
         lrv = (means[mm]-lwv)/lwv*2.9979e5
         print('%.2f %8.3f %8.3f %8.3f\n' % (means[mm], ews[mm], lrv, fwhms[mm]))
-        few.write('%10.3f %9.1f %9.3f %10.4f %29.2f %10.3f %10.3f %10.3f\n' % \
+        few.write('%10.3f %9.1f %9.3f %10.4f %29.2f %10.3f %10.3f %10.3f\n' %
                   (lwv, lel, lep, lloggf, ews[mm], means[mm], lrv, fwhms[mm]))
     
     # PLOT the line 
@@ -175,16 +170,14 @@ for iline, lwv in enumerate(WAVs):
     for lidx, ix in enumerate(cx0):
         ax2.text(ix, ymin2, '%d' % (lidx+1,), color='g', fontsize=5)
         if FWHML > 0: 
-            ax2.plot([ix,ix], [ymin2, ymax2], '--', lw=1, alpha=0.6, \
-                 label='%d %.2f %7.2f %7.2f %7.2f' % (lidx+1, x_0s[lidx], \
-                 ews[lidx], fwhm_gs[lidx], fwhm_ls[lidx]))
+            ax2.plot([ix,ix], [ymin2, ymax2], '--', lw=1, alpha=0.6,
+                 label='%d %.2f %7.2f %7.2f %7.2f' % (lidx+1, x_0s[lidx], ews[lidx], fwhm_gs[lidx], fwhm_ls[lidx]))
         else:
-            ax2.plot([ix,ix], [ymin2, ymax2], '--', lw=1, alpha=0.6, \
-                 label='%d %.2f %7.2f %7.2f' % (lidx+1, means[lidx], \
-                 ews[lidx], fwhms[lidx]))
+            ax2.plot([ix,ix], [ymin2, ymax2], '--', lw=1, alpha=0.6,
+                 label='%d %.2f %7.2f %7.2f' % (lidx+1, means[lidx], ews[lidx], fwhms[lidx]))
     ax2.plot(xrf, yfit, 'r-', lw=3, alpha=0.6)
     
-    ax1.set_title('%s %.3f' % (ename,lwv))
+    ax1.set_title('%s %.3f' % (elname,lwv))
     ax1.set_ylim(ymin1, ymax1)
     ax2.set_ylim(ymin2-(ymax2-ymin2)*0.2, ymax2)
     ax1.grid()
