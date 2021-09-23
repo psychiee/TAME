@@ -43,12 +43,15 @@ def find_elname(elnum):
              'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm',
              'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn', 'Uut',
              'Fl', 'Uup', 'Lv', 'Uus', 'Uuo']
-    name1 = names[int(elnum)-1]
+    if int(elnum) <= len(names):
+        name1 = names[int(elnum)-1]
+    else:
+        name1 = 'XY'
     ionnum = round(np.modf(elnum)[0]*10)+1
     if ionnum < 4:
         name2 = ''.join(list('I')*ionnum)
     else:
-        name2 = '*'
+        name2 = 'Z'
     return name1+name2
 
 
