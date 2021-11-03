@@ -52,7 +52,7 @@ for swv in STRONGs:
                   (xo > swv-DWV/2) & \
                   (xo < swv+DWV/2))[0]
     xr, yr = xo[rr], yo[rr]
-    cx, cy = find_absorption2(xr, yr, thres=-0.6)
+    cx, cy = find_absorption0(xr, yr, thres=(1-1/SNR))
     #print cx, cy
     if len(cx) == 0: continue
     mm = np.argmin(abs(cx-swv))
@@ -113,7 +113,7 @@ for iline, lwv in enumerate(WAVs):
     ymin2, ymax2 = ymin2-(ymax2-ymin2)/10, ymax2+(ymax2-ymin2)/10
     
     # FIND lines --------------------------------------
-    cx0, cy0 = find_absorption2(xrf, yrf, thres=(-1.0/SNR))
+    cx0, cy0 = find_absorption0(xrf, yrf, thres=(1-1/SNR))
     NLINES = len(cx0)
 
     #### SKIP for the case of NO LINE
