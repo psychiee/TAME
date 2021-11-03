@@ -30,7 +30,11 @@ STRONGs = np.array(par['RVLINE'].split(','), float)
 lineinfo = np.genfromtxt(LINEFILE, usecols=(0,1,2,3))
 WAVs, ELEs, EPs, LGFs = lineinfo[:,0], lineinfo[:,1], lineinfo[:,2], lineinfo[:,3]
 dat = np.genfromtxt(SPECFILE)
-slam, sap, sint = dat[:,0], dat[:,1], dat[:,2]
+# IDENTIFY the aperture column
+slam, sap, sint = dat[:, 0], dat[:, 1], dat[:, 2]
+nrow, nset = len(sap), len(set(sap))
+if nrow/nset < 10:
+    sap, sint = sint, sap
 apset = np.array(sorted(set(sap)))
 aplam = [] 
 for iap in apset:
@@ -48,9 +52,7 @@ RVs = []
 for swv in STRONGs:
     mm = np.argmin(abs(aplam-swv))
     ap = apset[mm]
-    rr = np.where((sap == ap) & \
-                  (xo > swv-DWV/2) & \
-                  (xo < swv+DWV/2))[0]
+    rr = np.where((sap == ap) & (xo > swv-DWV) & (xo < swv+DWV))[0]
     xr, yr = xo[rr], yo[rr]
     cx, cy = find_absorption0(xr, yr, thres=(1-1/SNR))
     #print cx, cy
@@ -70,7 +72,7 @@ for swv in STRONGs:
     ax.set_ylim(0, 1.2)
     ax.grid()
     ax.legend()
-    fig.savefig('RV_CHK-%i.png' % (swv,))
+    fig.savefig(f"{OUTPUT}_RV{swv:.0f}.png")
     fig.clf()
     RVs.append(rv1)
 if len(RVs) > 0:  RV = np.mean(RVs)
@@ -135,9 +137,9 @@ for iline, lwv in enumerate(WAVs):
         means = np.array(x_0s)
         mm = np.argmin(abs(x_0s - lwv))
         lrv = (x_0s[mm]-lwv)/lwv*2.9979e5
-        print('%.2f %8.3f %8.3f %8.3f %8.3f\n' % (x_0s[mm], ews[mm], lrv, fwhm_gs[mm], fwhm_ls[mm]))
-        few.write('%10.3f %9.1f %9.3f %10.4f %29.2f %10.3f %10.3f %10.3f %10.3f\n' %
-                  (lwv, lel, lep, lloggf, ews[mm], means[mm], lrv, fwhm_gs[mm], fwhm_ls[mm]))
+        print(f'>> {x_0s[mm]:.2f} {ews[mm]:8.3f} {lrv:8.3f} {fwhm_gs[mm]:8.3f} {fwhm_ls[mm]:8.3f}\n')
+        few.write(f'{lwv:10.3f} {lel:9.1f} {lep:9.3f} {lloggf:10.4f} {ews[mm]:29.2f} ' +
+                  f'{means[mm]:10.3f} {lrv:10.3f} {fwhm_gs[mm]:10.3f} {fwhm_ls[mm]:10.3f}\n')
 
     else:
         p, yfit = fit_mGaussian(xrf, yrf, cx0, cy0, fwhm=FWHMG)
@@ -152,13 +154,13 @@ for iline, lwv in enumerate(WAVs):
             EW = calc_EW_Gaussian(means[-1], amplitudes[-1], stddevs[-1])
             fwhms.append(FWHM)
             ews.append(EW)
-            print('%.2f %8.2f %8.2f %8.2f' % (means[-1], EW, FWHM, EW1))
+            print(f'{means[-1]:.2f} {EW:8.2f} {FWHM:8.2f} {EW1:8.2f}')
         means = np.array(means)
         mm = np.argmin(abs(means-lwv))
         lrv = (means[mm]-lwv)/lwv*2.9979e5
-        print('%.2f %8.3f %8.3f %8.3f\n' % (means[mm], ews[mm], lrv, fwhms[mm]))
-        few.write('%10.3f %9.1f %9.3f %10.4f %29.2f %10.3f %10.3f %10.3f\n' %
-                  (lwv, lel, lep, lloggf, ews[mm], means[mm], lrv, fwhms[mm]))
+        print(f'>> {means[mm]:.2f} {ews[mm]:8.3f} {lrv:8.3f} {fwhms[mm]:8.3f}\n')
+        few.write(f'{lwv:10.3f} {lel:9.1f} {lep:9.3f} {lloggf:10.4f} {ews[mm]:29.2f} ' +
+                  f'{means[mm]:10.3f} {lrv:10.3f} {fwhms[mm]:10.3f}\n')
     
     # PLOT the line 
     fig, (ax1, ax2) = plt.subplots(nrows=2, num=2, figsize=(6,8))
@@ -171,10 +173,10 @@ for iline, lwv in enumerate(WAVs):
         ax2.text(ix, ymin2, '%d' % (lidx+1,), color='g', fontsize=5)
         if FWHML > 0: 
             ax2.plot([ix,ix], [ymin2, ymax2], '--', lw=1, alpha=0.6,
-                 label='%d %.2f %7.2f %7.2f %7.2f' % (lidx+1, x_0s[lidx], ews[lidx], fwhm_gs[lidx], fwhm_ls[lidx]))
+                     label=f'{lidx + 1:d} {x_0s[lidx]:.2f} {ews[lidx]:7.2f} {fwhm_gs[lidx]:7.2f} {fwhm_ls[lidx]:7.2f}')
         else:
             ax2.plot([ix,ix], [ymin2, ymax2], '--', lw=1, alpha=0.6,
-                 label='%d %.2f %7.2f %7.2f' % (lidx+1, means[lidx], ews[lidx], fwhms[lidx]))
+                     label=f'{lidx + 1:d} {means[lidx]:.2f} {ews[lidx]:7.2f} {fwhms[lidx]:7.2f}')
     ax2.plot(xrf, yfit, 'r-', lw=3, alpha=0.6)
     
     ax1.set_title('%s %.3f' % (elname,lwv))

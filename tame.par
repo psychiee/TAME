@@ -1,10 +1,10 @@
-LINEFILE    feline.tmp        # INPUT line list file (wavelength, elements, EP, log_gf)
-SPECFILE    solar_sky.lpx     # INPUT spectrum file (wavelength, aperture#, intensity)
+LINEFILE    fe.lines          # INPUT line list file (wavelength, elements, EP, log_gf)
+SPECFILE    solar_sky.lpx     # INPUT spectrum file (wavelength, intensity, # of aperture)
 OUTPUT      sun_fe            # OUTPUT file name for the data and pdf of EW measurements
 FWHMG       0.15              # Initial parameter of Gaussian FWHM for line fitting
 FWHML       0                 # Initial parameter of Lorentzian FWHM for line fitting (0=Gaussian, +=Voigt)
 DWV         3                 # Analysis window size for each line in Angstrom
-SNR         300               # Spectrum SNR for determining local continuum and detecting lines
+SNR         200               # Spectrum SNR for determining local continuum and detecting lines
 NMAX        40                # Iteration number for determining local continuum level
 RVLINE      5889.95, 5895.92  # Strong lines for RV measurements
 
